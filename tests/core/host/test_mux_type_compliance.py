@@ -19,9 +19,11 @@ from libp2p.protocol_muxer.exceptions import (
     MultiselectError,
 )
 from libp2p.protocol_muxer.multiselect import Multiselect
-from libp2p.protocol_muxer.multiselect_communicator import (
-    MultiselectCommunicator,
-)
+
+# Needed for mock calls
+from libp2p.protocol_muxer.multiselect_communicator import MultiselectCommunicator
+
+# --- Fixtures for setting up the test environment ---
 
 
 @pytest.fixture
@@ -54,9 +56,8 @@ def mock_network_service(mock_peer_id, mock_peerstore):
     mock_network.get_peer_id.return_value = mock_peer_id
     mock_network.connections = {}  # Simulate no active connections initially
     mock_network.listeners = {}  # Simulate no active listeners initially
-    mock_network.set_stream_handler = (
-        MagicMock()
-    )  # Mock setting stream handler if called during init
+    # Mock setting stream handler if called during init
+    mock_network.set_stream_handler = MagicMock()
     mock_network.new_stream = AsyncMock()  # Mock for new_stream calls in BasicHost
 
     return mock_network
@@ -77,12 +78,10 @@ def mock_communicator():
     """
     Provides a mock for IMultiselectCommunicator for negotiation tests.
     By default, it will provide responses for a successful handshake and a protocol
-    proposal.
-    Reset side_effect in specific tests if different behavior is needed.
+    proposal. Reset side_effect in specific tests if different behavior is needed.
     """
-    mock = AsyncMock(
-        spec=MultiselectCommunicator
-    )  # Use concrete spec for more accurate method mocks
+    # Use concrete spec for more accurate method mocks
+    mock = AsyncMock(spec=MultiselectCommunicator)
     mock.read = AsyncMock()
     mock.write = AsyncMock()
     return mock
@@ -193,16 +192,16 @@ async def test_get_mux_negotiate_success(basic_host, mock_communicator):
     # Define a protocol and its handler that `negotiate` should successfully find
     selected_protocol_str = "/app/my-protocol/1.0.0"
     selected_protocol = TProtocol(selected_protocol_str)
-    dummy_negotiate_handler = AsyncMock(
-        spec=StreamHandlerFn
-    )  # Handler for the selected protocol
+    # Handler for the selected protocol
+    dummy_negotiate_handler = AsyncMock(spec=StreamHandlerFn)
     mux.add_handler(selected_protocol, dummy_negotiate_handler)
 
-    # Configure the mock_communicator to simulate a successful negotiation sequence
+    # Configure mock_communicator to simulate a successful negotiation
     mock_communicator.read.side_effect = [
-        "/multistream/1.0.0",  # First read: Client sends its multistream
-        # protocol (handshake)
-        selected_protocol_str,  # Second read: Client proposes the app protocol
+        # First read: Client sends its multistream protocol (handshake)
+        "/multistream/1.0.0",
+        # Second read: Client proposes the app protocol
+        selected_protocol_str,
     ]
 
     # Perform the negotiation
@@ -235,10 +234,10 @@ async def test_get_mux_negotiate_protocol_not_found(basic_host, mock_communicato
 
     # Ensure the protocol we propose isn't actually registered (beyond defaults)
     non_existent_protocol = TProtocol("/non-existent/protocol")
-    assert non_existent_protocol not in mux.get_protocols()  # Ensure it's not present
+    # Ensure it's not present
+    assert non_existent_protocol not in mux.get_protocols()
 
-    # Configure the mock_communicator to simulate a handshake followed by a non-existent
-    # protocol
+    # Configure mock_communicator for a handshake followed by a non-existent protocol
     mock_communicator.read.side_effect = [
         "/multistream/1.0.0",  # Handshake response
         str(non_existent_protocol),  # Client proposes a non-existent protocol
